@@ -75,17 +75,32 @@ def preprocess_to_h5(
         if os.path.exists(h5_path):
             # 이미 처리된 파일 건너뛰기
             continue
-
-        # WFDB 로드
-        rec = wfdb.rdrecord(os.path.join(rec_dir, rec_name))
-        sig = rec.p_signal[:, leads].astype('float32')  # (T, C)
+        
+        #헤더만 읽어서 len 확인 하는 부분 수정
+        try:
+            header = wfdb.rdheader(os.path.join(rec_dir, rec_name))
+        except Exception as e:
+            print(f"[ERROR] {rec_name}: 헤더 읽기 실패 → {e}")
+            continue
+        if header.sig_len is None or header.sig_len <=0:
+            print(f"[SKIP] {rec_name}: 샘플 길이 0 ({header.sig_len})")
+            continue
+        
+        # 실제 로드 부분
+        try:
+            rec = wfdb.rdrecord(os.path.join(rec_dir, rec_name))
+        except Exception as e:
+            print(f"[SKIP] {rec_name}: wfdb.rdrecord 오류 → {e}")
+            continue
+            
+        ecg = rec.p_signal[:, leads].astype('float32')  # (T, C)
         fs  = int(rec.fs)
 
         # HDF5로 저장
         with h5py.File(h5_path, 'w') as f:
-            f.create_dataset('sig', data=sig, compression='gzip')
-            f.create_dataset('fs',  data=fs)
-        print(f"[H5] Saved {h5_path}: shape={sig.shape}, fs={fs}")
+            f.create_dataset('ecg', data=ecg)
+            f.attrs['fs'] = fs
+        print(f"[H5] Saved {h5_path}: shape={ecg.shape}, fs={fs}")
 
 
 # 샘플 데이터로 시도해보기
