@@ -24,9 +24,12 @@ def load_data(
     df_map = df.set_index(id_col)[label_col].to_dict()
 
     # 2) 레코드(.hea) 파일 리스트 (data_dir/originals/*.hea)
-    # rec_dir = os.path.join(data_dir, "originals")
-    rec_dir = data_dir
+    rec_dir = os.path.join(data_dir, "originals")
+    # rec_dir = data_dir
     all_heas = [f for f in os.listdir(rec_dir) if f.endswith(".hea")]
+    
+    #점검 코드 -> 결과 이상무
+    #print("Found HEA files:", all_heas[:5], "... total:", len(all_heas))
 
     # 3) 이름 끝 숫자 추출 & 레이블 매핑
     records, labels = [], []
@@ -52,10 +55,16 @@ def load_data(
             print(f"skipping (no h5 match for ID): {rec_id}")
             continue
         h5_path = os.path.join(h5_dir, matches[0])
-        valid.append((rec_path, lab))
+        valid.append((h5_path, lab))
     if not valid:
         raise FileNotFoundError(f"No records with H5 files found in {h5_dir}")
     recs, labs = zip(*valid)
+    #점검 코드 결과 -> 이상무   
+    #print("Mapped records:", recs[:5], "... total:", len(recs))
+
+    #점검 코드
+    #print("H5 files:", h5_files)
+    #print("Valid pairs:", valid[:5], "... total:", len(valid))
 
     recs_train, recs_test, labs_train, labs_test = train_test_split(
         recs, labs,
@@ -64,33 +73,33 @@ def load_data(
         stratify=labs
     )
 
+
     # 세그먼트 생성
-    def build_meta(rec_list, label_list, mode):
+    def build_meta(h5_list, label_list, mode):
         metas, labs = [], []
-        for rec_name, lab in tqdm(zip(rec_list, label_list), desc=f"Building {mode} meta", total=len(rec_list)):
+        for h5_path, lab in tqdm(zip(h5_list, label_list),
+                                desc=f"Building {mode} meta", total=len(h5_list)):
             try:
-                sig, fs = sig, fs = load_h5(h5_path)
-            except Exception:
+                sig, fs = load_h5(h5_path)
+            except Exception as e:
+                print(f"[{mode}] load_h5 failed for {h5_path}: {e}")
                 continue
-            starts = []
+            
             segs = segment_signal(sig, fs, seg_sec)
             if segs is None:
+                print(f"[{mode}] too short: {h5_path}")
                 continue
+
             seg_len = int(fs*seg_sec)
             n_win = sig.shape[0] // seg_len
             if n_win < 1:
-                print(f"Skipping {rec_name}, too short (total samples: {sig.shape[0]})")
-                continue
+               print(f"[{mode}] no window: {h5_path}")
+               continue
             starts = [i*seg_len for i in range(n_win)]
-            rec_id = rec_path.split(os.sep)[-1]
-            rec_id = str(rec_id)
-            pattern = re.compile(rf".*{re.escape(rec_id)}.*\.h5$")
-            matches = [f for f in h5_files if pattern.match(f)]
-            if not matches:
-                continue
-            h5_path = os.path.join(h5_dir, matches[0])
+            
             metas.append((h5_path, starts, fs))
             labs.append(lab)
+        print(f"[{mode}] built {len(metas)} bags")
         return metas, labs
 
     train_meta, train_labels = build_meta(recs_train, labs_train, "train")

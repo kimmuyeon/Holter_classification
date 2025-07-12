@@ -86,3 +86,14 @@ def preprocess_to_h5(
             f.create_dataset('sig', data=sig, compression='gzip')
             f.create_dataset('fs',  data=fs)
         print(f"[H5] Saved {h5_path}: shape={sig.shape}, fs={fs}")
+
+
+# 샘플 데이터로 시도해보기
+'''
+if __name__ == '__main__':
+    preprocess_to_h5(
+        rec_dir = r'C:\Users\andus\Desktop\my_work\BOAZ 23기\ADV\boaz_sample2\projects\data\originals',
+        h5_dir = r'C:\Users\andus\Desktop\my_work\BOAZ 23기\ADV\boaz_sample2\projects\data\denoised',
+        leads = [0,1,2]
+    )
+'''
