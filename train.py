@@ -8,7 +8,7 @@ from models.mil_model    import SimpleMIL
 from models.instance_dataset import ECGBagInstanceDataset
 import os, pickle
 import wfdb
-from glob import glob
+import glob
 from tqdm import tqdm
 from utils.preprocess import preprocess_raw_signals
 import h5py
@@ -50,12 +50,14 @@ else:
 
 print(device)
 
+
 filtered_meta, filtered_labels = [], []
 for meta, lbl in zip(train_meta, train_labels):
     rec_path, _, _ = meta
     rec_id = os.path.basename(rec_path)
-
-    h5_path = os.path.join(H5_DIR, f"{rec_id}_denoised.h5")
+    print(rec_id)
+    
+    h5_path = os.path.join(H5_DIR, f"{rec_id}")  # _denoised.h5 붙여주기 (연구실 서버에서는)
     
     if not os.path.exists(h5_path):
         matches = glob.glob(os.path.join(H5_DIR, f"{rec_id}*.h5"))
@@ -69,9 +71,6 @@ for meta, lbl in zip(train_meta, train_labels):
 
 train_meta, train_labels = filtered_meta, filtered_labels
 print('[AE] Train set label distribution')
-
-print(H5_DIR)
-print(os.listdir(H5_DIR)[:10])
 
 
 for lbl, cnt in Counter(train_labels).items():
